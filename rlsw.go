@@ -143,15 +143,3 @@ func (r *Limiter) TimeStampCount() int {
 
 	return len(r.timestamps)
 }
-
-// Returns a
-// func SpaceBetween(r *RateLimiterSW) {
-
-// }
-
-// func GetRate(r *RateLimiterSW, requestCount int) {
-
-// 	// get requests we can make per duration
-// 	currentAmountWeCanMakeInWindow := r.limit - r.TimeStampCount()
-// 	rpd := currentAmountWeCanMakeInWindow / r.Window().Seconds()
-// }

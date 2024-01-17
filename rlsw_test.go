@@ -49,3 +49,5 @@ func Test_RateLimiter(t *testing.T) {
 	}
 
 }
+
+//TODO: Write tests using go routines to check functionality of sliding window
