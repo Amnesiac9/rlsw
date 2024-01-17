@@ -43,6 +43,13 @@ func (r *RateLimiterSW) SetWindow(window time.Duration) {
 	r.window = window
 }
 
+// Clears the expired timestamps. Does not Lock or Unlock Mutex, never call on it's own.
+func (r *RateLimiterSW) clearExpired(now time.Time) {
+	for len(r.timestamps) > 0 && now.Sub(r.timestamps[0]) > r.window {
+		r.timestamps = r.timestamps[1:]
+	}
+}
+
 // Allow returns true if the window has space for another request and appends a timestamp to the window.
 func (r *RateLimiterSW) Allow() bool {
 	r.mu.Lock()
@@ -63,8 +70,15 @@ func (r *RateLimiterSW) Allow() bool {
 	return true
 }
 
-// Allow returns the duration to wait before another request should be allowed. If the duration is 0, then 0 is returned and the timestamp is recorded.
-func (r *RateLimiterSW) AllowTime() time.Duration {
+// Schedule() returns the duration to wait before another request should be allowed to proceed.
+//
+// Schedule() removes any expired timestamps, then returns the duration to wait before another request should be allowed.
+//
+// If the request is allowed, it will append the current timestamp to the window.
+//
+// If the request is not allowed, it will append the current timestamp + the wait time to the timestamps, then remove the oldest timestamp, even if it's not expired.
+// This allows you to concurrently call Schedule() and ensure each request waits the appropriate amount of time.
+func (r *RateLimiterSW) Schedule() time.Duration {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -87,7 +101,7 @@ func (r *RateLimiterSW) AllowTime() time.Duration {
 // Wait blocks until the rate limiter allows another request. If blocked, it schedules the time in the future on the timestamps, and removes the oldest timestamp.
 // This way, the next request will need to wait longer.
 func (r *RateLimiterSW) Wait() {
-	time.Sleep(r.AllowTime())
+	time.Sleep(r.Schedule())
 }
 
 //// WIP
@@ -114,11 +128,4 @@ func (r *RateLimiterSW) WaitTime() time.Duration {
 // 	r.mu.Lock()
 // 	defer r.mu.Unlock()
 // 	r.timestamps = append(r.timestamps, time.Now())
-// }
-
-// Clears the expired timestamps. Does not Lock or Unlock Mutex, never call on it's own.
-// func (r *RateLimiterSW) clearExpired(now time.Time) {
-// 	for len(r.timestamps) > 0 && now.Sub(r.timestamps[0]) > r.window {
-// 		r.timestamps = r.timestamps[1:]
-// 	}
 // }
