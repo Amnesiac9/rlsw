@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-func (r *RateLimiterSW) clearExpiredOriginal(now time.Time) {
+func (r *Limiter) clearExpiredOriginal(now time.Time) {
 	for len(r.timestamps) > 0 && now.Sub(r.timestamps[0]) > r.window {
 		r.timestamps = r.timestamps[1:]
 	}
 }
 
-func (r *RateLimiterSW) clearExpiredRevised(now time.Time) {
+func (r *Limiter) clearExpiredRevised(now time.Time) {
 	idx := 0
 	for idx < len(r.timestamps) && now.Sub(r.timestamps[idx]) > r.window {
 		idx++
@@ -20,7 +20,7 @@ func (r *RateLimiterSW) clearExpiredRevised(now time.Time) {
 }
 
 func BenchmarkClearExpiredOriginal(b *testing.B) {
-	r := &RateLimiterSW{
+	r := &Limiter{
 		timestamps: make([]time.Time, 1000),
 		window:     time.Minute,
 	}
@@ -32,7 +32,7 @@ func BenchmarkClearExpiredOriginal(b *testing.B) {
 }
 
 func BenchmarkClearExpiredRevised(b *testing.B) {
-	r := &RateLimiterSW{
+	r := &Limiter{
 		timestamps: make([]time.Time, 1000),
 		window:     time.Minute,
 	}

@@ -28,6 +28,10 @@ func Test_RateLimiter(t *testing.T) {
 			t.Error("Expected rl.Limit() to equal test.limit")
 		}
 
+		if rl.Window() != test.window {
+			t.Error("Expected rl.Window() to equal test.window")
+		}
+
 		for i := 0; i < test.limit; i++ {
 			if !rl.Allow() {
 				t.Error("Expected Allow() to return true")
@@ -41,6 +45,7 @@ func Test_RateLimiter(t *testing.T) {
 		if !rl.Allow() {
 			t.Error("Expected Allow() to return true")
 		}
+
 	}
 
 }
