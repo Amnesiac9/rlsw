@@ -45,6 +45,7 @@ func (r *RateLimiterSW) Allow() bool {
 }
 
 // Wait blocks until the rate limiter allows another request.
+// TODO: Does not add a timestamp if the request returns a time to sleep...
 func (r *RateLimiterSW) Wait() {
 	time.Sleep(r.AllowTime())
 }
