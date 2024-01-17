@@ -50,28 +50,38 @@ func (r *RateLimiterSW) clearExpired(now time.Time) {
 	}
 }
 
+func (r *RateLimiterSW) addTime(timestamp time.Time) {
+	r.timestamps = append(r.timestamps, timestamp)
+}
+
+// func (r *RateLimiterSW) waitTime() time.Duration {
+// 	return r.window - time.Since(r.timestamps[0])
+// }
+
+func (r *RateLimiterSW) waitTime(now time.Time) time.Duration {
+	return r.window - now.Sub(r.timestamps[0])
+}
+
+func (r *RateLimiterSW) removeOldest() {
+	r.timestamps = r.timestamps[1:]
+}
+
 // Allow returns true if the window has space for another request and appends a timestamp to the window.
 func (r *RateLimiterSW) Allow() bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	now := time.Now()
-	// Clear expired
-	// TODO: Could make this more efficient by getting the index of the maximum timestamps to clear?
-	for len(r.timestamps) > 0 && now.Sub(r.timestamps[0]) > r.window {
-		r.timestamps = r.timestamps[1:]
-	}
+	r.clearExpired(now)
 
 	if len(r.timestamps) >= r.limit {
 		return false
 	}
 
-	r.timestamps = append(r.timestamps, now)
+	r.addTime(now)
 	return true
 }
 
-// Schedule() returns the duration to wait before another request should be allowed to proceed.
-//
 // Schedule() removes any expired timestamps, then returns the duration to wait before another request should be allowed.
 //
 // If the request is allowed, it will append the current timestamp to the window.
@@ -83,49 +93,65 @@ func (r *RateLimiterSW) Schedule() time.Duration {
 	defer r.mu.Unlock()
 
 	now := time.Now()
-	for len(r.timestamps) > 0 && now.Sub(r.timestamps[0]) > r.window {
-		r.timestamps = r.timestamps[1:]
-	}
+	r.clearExpired(now)
 
 	if len(r.timestamps) >= r.limit {
-		waitTime := r.window - now.Sub(r.timestamps[0])
-		r.timestamps = append(r.timestamps, now.Add(waitTime)) // Append the timestamp with the future time that needs to be waited.
-		r.timestamps = r.timestamps[1:]                        // Remove the oldest timestamp, this way, the next request will need to wait longer.
+		waitTime := r.waitTime(now)
+		r.addTime(now.Add(waitTime)) // Append the timestamp with the future time that the wait time with expire at.
+		r.removeOldest()             // Remove the oldest timestamp, this way, the next request will need to wait longer.
 		return waitTime
 	}
 
-	r.timestamps = append(r.timestamps, now)
+	r.addTime(now)
 	return 0
 }
 
-// Wait blocks until the rate limiter allows another request. If blocked, it schedules the time in the future on the timestamps, and removes the oldest timestamp.
+// Wait calls time.Sleep(r.Schedule()). This blocks until the rate limiter allows another request. If blocked, it schedules the time in the future on the timestamps, and removes the oldest timestamp.
 // This way, the next request will need to wait longer.
 func (r *RateLimiterSW) Wait() {
 	time.Sleep(r.Schedule())
 }
 
-//// WIP
+// The problem with this is that if used with go routines, concurrent requests to GetWaitTime() will return the same or close to the wait WaitTime
+// This won't be accurate if there is a time gap between the oldest time and the next available time.
+func (r *RateLimiterSW) Wait_Old() {
+	time.Sleep(r.GetWaitTime())
+	r.addTime(time.Now())
+}
 
-// Gets the current wait time and returns it without appending to the requests. Returns 0 if there is no wait.
-func (r *RateLimiterSW) WaitTime() time.Duration {
+// Clears expired timestamps, then gets the current wait time and returns it without appending to the timestamps. Returns 0 if there is no wait.
+func (r *RateLimiterSW) GetWaitTime() time.Duration {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	now := time.Now()
-	for len(r.timestamps) > 0 && now.Sub(r.timestamps[0]) > r.window {
-		r.timestamps = r.timestamps[1:]
-	}
+	r.clearExpired(now)
 
 	if len(r.timestamps) >= r.limit {
-		return r.window - now.Sub(r.timestamps[0])
+		return r.waitTime(now)
 	}
 
 	return 0
 }
 
-// Add the current time to the timestamps of the RateLimiter.
-// func (r *RateLimiterSW) AddNow() {
-// 	r.mu.Lock()
-// 	defer r.mu.Unlock()
-// 	r.timestamps = append(r.timestamps, time.Now())
+// Clears any expired timestamps, then returns the current len of r.timestamps
+func (r *RateLimiterSW) TimeStampCount() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.clearExpired(time.Now())
+
+	return len(r.timestamps)
+}
+
+// Returns a
+// func SpaceBetween(r *RateLimiterSW) {
+
+// }
+
+// func GetRate(r *RateLimiterSW, requestCount int) {
+
+// 	// get requests we can make per duration
+// 	currentAmountWeCanMakeInWindow := r.limit - r.TimeStampCount()
+// 	rpd := currentAmountWeCanMakeInWindow / r.Window().Seconds()
 // }

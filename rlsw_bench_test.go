@@ -21,7 +21,7 @@ func (r *RateLimiterSW) clearExpiredRevised(now time.Time) {
 
 func BenchmarkClearExpiredOriginal(b *testing.B) {
 	r := &RateLimiterSW{
-		timestamps: make([]time.Time, 500),
+		timestamps: make([]time.Time, 1000),
 		window:     time.Minute,
 	}
 	now := time.Now()
@@ -33,7 +33,7 @@ func BenchmarkClearExpiredOriginal(b *testing.B) {
 
 func BenchmarkClearExpiredRevised(b *testing.B) {
 	r := &RateLimiterSW{
-		timestamps: make([]time.Time, 500),
+		timestamps: make([]time.Time, 1000),
 		window:     time.Minute,
 	}
 	now := time.Now()
