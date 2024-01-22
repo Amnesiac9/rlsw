@@ -24,11 +24,11 @@ func Test_RateLimiter(t *testing.T) {
 		rl.SetLimit(test.limit)
 		rl.SetWindow(test.window)
 
-		if rl.Limit() != test.limit {
+		if rl.GetLimit() != test.limit {
 			t.Error("Expected rl.Limit() to equal test.limit")
 		}
 
-		if rl.Window() != test.window {
+		if rl.GetWindow() != test.window {
 			t.Error("Expected rl.Window() to equal test.window")
 		}
 

@@ -21,7 +21,7 @@ func NewRateLimiter(limit int, duration time.Duration) *Limiter {
 	}
 }
 
-func (r *Limiter) Limit() int {
+func (r *Limiter) GetLimit() int {
 	return r.limit
 }
 
@@ -32,7 +32,7 @@ func (r *Limiter) SetLimit(limit int) {
 	r.limit = limit
 }
 
-func (r *Limiter) Window() time.Duration {
+func (r *Limiter) GetWindow() time.Duration {
 	return r.window
 }
 
@@ -54,11 +54,7 @@ func (r *Limiter) addTime(timestamp time.Time) {
 	r.timestamps = append(r.timestamps, timestamp)
 }
 
-// func (r *RateLimiterSW) waitTime() time.Duration {
-// 	return r.window - time.Since(r.timestamps[0])
-// }
-
-func (r *Limiter) waitTime(now time.Time) time.Duration {
+func (r *Limiter) getWaitTime(now time.Time) time.Duration {
 	return r.window - now.Sub(r.timestamps[0])
 }
 
@@ -96,7 +92,7 @@ func (r *Limiter) Schedule() time.Duration {
 	r.clearExpired(now)
 
 	if len(r.timestamps) >= r.limit {
-		waitTime := r.waitTime(now)
+		waitTime := r.getWaitTime(now)
 		r.addTime(now.Add(waitTime)) // Append the timestamp with the future time that the wait time with expire at.
 		r.removeOldest()             // Remove the oldest timestamp, this way, the next request will need to wait longer.
 		return waitTime
@@ -128,10 +124,20 @@ func (r *Limiter) GetWaitTime() time.Duration {
 	r.clearExpired(now)
 
 	if len(r.timestamps) >= r.limit {
-		return r.waitTime(now)
+		return r.getWaitTime(now)
 	}
 
 	return 0
+}
+
+// Clears the expired timestamps. Uses a mutex to lock and unlock, safe to call manually.
+//
+// Not normally needed, since Allow(), Schedule(), and Wait() all clear the expired timestamps.
+func (r *Limiter) Clear() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.timestamps = make([]time.Time, 0)
 }
 
 // Clears any expired timestamps, then returns the current len of r.timestamps
