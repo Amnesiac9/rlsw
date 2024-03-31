@@ -1,3 +1,6 @@
+![Tests](https://github.com/Amnesiac9/rlsw/actions/workflows/tests.yml/badge.svg?branch=main)
+![Build](https://github.com/Amnesiac9/rlsw/actions/workflows/build.yml/badge.svg?branch=main)
+
 ## Simple sliding window rate limiter package for GO.
 
 The idea behind a sliding window rate limiter is to only allow a set amount of requests in a set block of time. For example, 100 requests within one minute. 
