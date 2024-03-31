@@ -20,10 +20,10 @@ type RateLimiterSW struct {
 }
 ```
 
-Call the Wait() function to wait until a timeslot opens up. This will block until the request is allowed. If you need to set a max wait time, you can use WaitWithLimit(1 * time.Minute).
+Call the Wait() function to wait until a timeslot opens up. This will block until the request is allowed. If you need to set a max wait time, you can use `WaitWithLimit(1 * time.Minute)`.
 
 The Wait() function calls a function that returns the time to wait until the request should be allowed, and replaces the oldest timestamp with the time the new request was made. This way, concurrent requests will always be scheduled for the time that the coresponding 
 
-This package expacts that the server will attach the rate limiter instance to a specific client or user, so that their rate limits can be cached between requests. 
+This package expects that the server will attach the rate limiter instance to a specific client or user, so that their rate limits can be cached between requests and kept track of per client. A common wait to do this would be with a `map[string]RateLimiterSW`
 
 The Wait() function automatically removes expired timestamps from the window, so there's no need to worry about removing the timestamps, but if you need to clear the timestamps manually, you can call Clear()
