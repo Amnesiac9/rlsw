@@ -48,6 +48,33 @@ func Test_RateLimiter(t *testing.T) {
 
 	}
 
-}
+	t.Run("WaitWithLimit", func(t *testing.T) {
+		rl := NewRateLimiter(1, 3*time.Second)
+		err := rl.WaitWithLimit(10 * time.Second)
+		if err != nil {
+			t.Error("Expected first WaitWithLimit() to return no error: " + err.Error())
+		}
 
-//TODO: Write tests using go routines to check functionality of sliding window
+		err = rl.WaitWithLimit(1 * time.Second)
+		if err == nil {
+			t.Error("Expected WaitWithLimit(1 *time.Second) to error.")
+		}
+
+	})
+
+	t.Run("TimeStampCount and Clear", func(t *testing.T) {
+		rl := NewRateLimiter(5, 10*time.Second)
+		for i := 1; i <= 5; i++ {
+			rl.Allow()
+		}
+		if rl.TimeStampCount() != 5 {
+			t.Error("Expected TimeStampCount to be 5 after running Allow() 5 times.")
+		}
+
+		rl.Clear()
+		if rl.TimeStampCount() != 0 {
+			t.Error("Expected TimeStampCount to be 0 after running Clear()")
+		}
+	})
+
+}

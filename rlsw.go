@@ -111,10 +111,10 @@ func (r *Limiter) Wait() {
 
 // The problem with this is that if used with go routines, concurrent requests to GetWaitTime() will return the same or close to the wait WaitTime
 // This won't be accurate if there is a time gap between the oldest time and the next available time.
-func (r *Limiter) Wait_Old() {
-	time.Sleep(r.GetWaitTime())
-	r.addTime(time.Now())
-}
+// func (r *Limiter) Wait_Old() {
+// 	time.Sleep(r.GetWaitTime())
+// 	r.addTime(time.Now())
+// }
 
 // Clears expired timestamps, then gets the current wait time and returns it without appending to the timestamps. Returns 0 if there is no wait.
 func (r *Limiter) GetWaitTime() time.Duration {
@@ -151,8 +151,8 @@ func (r *Limiter) TimeStampCount() int {
 	return len(r.timestamps)
 }
 
-func (r *Limiter) WaitWithLimit(limit time.Duration) error {
-	if r.GetWaitTime() > limit {
+func (r *Limiter) WaitWithLimit(waitLimit time.Duration) error {
+	if r.GetWaitTime() > waitLimit {
 		return errors.New("Wait time exceeds limit")
 	}
 
