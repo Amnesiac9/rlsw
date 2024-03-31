@@ -1,6 +1,7 @@
 package rlsw
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
@@ -148,4 +149,14 @@ func (r *Limiter) TimeStampCount() int {
 	r.clearExpired(time.Now())
 
 	return len(r.timestamps)
+}
+
+func (r *Limiter) WaitWithLimit(limit time.Duration) error {
+	if r.GetWaitTime() > limit {
+		return errors.New("Wait time exceeds limit")
+	}
+
+	r.Wait()
+
+	return nil
 }
