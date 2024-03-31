@@ -1,6 +1,6 @@
 ![Tests](https://github.com/Amnesiac9/rlsw/actions/workflows/tests.yml/badge.svg?branch=main)
 ![Build](https://github.com/Amnesiac9/rlsw/actions/workflows/build.yml/badge.svg?branch=main)
-[![Go Coverage](https://github.com/Amnesiac9/rlsw/coverage.svg?branch=main)](https://raw.githack.com/wiki/Amnesiac9/rlsw/coverage.html)
+[![Go Coverage](https://github.com/Amnesiac9/rlsw/wiki/coverage.svg?branch=main)](https://raw.githack.com/wiki/Amnesiac9/rlsw/coverage.html)
 
 ## Simple sliding window rate limiter package for GO.
 
