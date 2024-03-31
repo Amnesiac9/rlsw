@@ -20,3 +20,4 @@ jobs:
 
     - name: Go coverage report
       uses: ncruces/go-coverage-report@v0.3.0
+      continue-on-error: true
