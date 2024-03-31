@@ -14,8 +14,8 @@ func Test_RateLimiter(t *testing.T) {
 	}
 
 	testCases := []testCase{
-		{name: "Limit 10 | Window 1", limit: 10, window: 10},
-		{name: "Limit 20 | Window 100ms", limit: 20, window: 100 * time.Millisecond},
+		{name: "Limit 10 | Window 1", limit: 10, window: 100 * time.Millisecond},
+		{name: "Limit 20 | Window 100ms", limit: 20, window: 200 * time.Millisecond},
 	}
 
 	for _, test := range testCases {
