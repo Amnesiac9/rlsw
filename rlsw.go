@@ -8,10 +8,11 @@ import (
 
 // Limiter is a sliding window rate limiter that allows for a certain number of requests per duration.
 type Limiter struct {
-	mu         sync.Mutex
-	timestamps []time.Time
-	limit      int
-	window     time.Duration
+	mu          sync.Mutex
+	timestamps  []time.Time
+	limit       int
+	window      time.Duration
+	maxWaitTime time.Duration
 }
 
 func NewRateLimiter(limit int, duration time.Duration) *Limiter {
@@ -153,6 +154,22 @@ func (r *Limiter) TimeStampCount() int {
 
 func (r *Limiter) WaitWithLimit(waitLimit time.Duration) error {
 	if r.GetWaitTime() > waitLimit {
+		return errors.New("Wait time exceeds limit")
+	}
+
+	r.Wait()
+
+	return nil
+}
+
+func (r *Limiter) SetMaxWaitTime(waitLimit time.Duration) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.maxWaitTime = waitLimit
+}
+
+func (r *Limiter) WaitWithInternalLimit() error {
+	if r.maxWaitTime != 0 && r.GetWaitTime() > r.maxWaitTime {
 		return errors.New("Wait time exceeds limit")
 	}
 
