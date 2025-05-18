@@ -95,7 +95,7 @@ func (r *Limiter) Schedule() time.Duration {
 
 	if len(r.timestamps) >= r.limit {
 		waitTime := r.getWaitTime(now)
-		r.addTime(now.Add(waitTime)) // Append the timestamp with the future time that the wait time with expire at.
+		r.addTime(now.Add(waitTime)) // Append the timestamp with the future time that the wait time will expire at.
 		r.removeOldest()             // Remove the oldest timestamp, this way, the next request will need to wait longer.
 		return waitTime
 	}
