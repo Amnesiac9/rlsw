@@ -1,10 +1,32 @@
 package rlsw
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
 )
+
+// ErrWaitTimeExceedsLimit is returned when a request is refused because it would
+// have had to wait longer than the caller was willing to.
+var ErrWaitTimeExceedsLimit = errors.New("wait time exceeds limit")
+
+// sleepOrCancel blocks for d, or until ctx is done, whichever happens first.
+func sleepOrCancel(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return ctx.Err()
+	}
+
+	t := time.NewTimer(d)
+	defer t.Stop()
+
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
 
 // Limiter is a sliding window rate limiter that allows for a certain number of requests per duration.
 type Limiter struct {
@@ -104,10 +126,55 @@ func (r *Limiter) Schedule() time.Duration {
 	return 0
 }
 
+// ScheduleWithLimit behaves like Schedule, except it refuses to reserve a slot when the
+// resulting wait would exceed max, returning ErrWaitTimeExceedsLimit instead.
+//
+// The check and the reservation happen under a single lock, so concurrent callers can
+// never be handed a wait longer than the max they asked for. On rejection the window is
+// left untouched: a caller that gives up must not consume capacity, otherwise it would
+// push the wait out further for everyone behind it.
+func (r *Limiter) ScheduleWithLimit(max time.Duration) (time.Duration, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	now := time.Now()
+	r.clearExpired(now)
+
+	if len(r.timestamps) >= r.limit {
+		waitTime := r.getWaitTime(now)
+		if waitTime > max {
+			return 0, ErrWaitTimeExceedsLimit
+		}
+		r.addTime(now.Add(waitTime))
+		r.removeOldest()
+		return waitTime, nil
+	}
+
+	r.addTime(now)
+	return 0, nil
+}
+
 // Wait calls time.Sleep(r.Schedule()). This blocks until the rate limiter allows another request. If blocked, it schedules the time in the future on the timestamps, and removes the oldest timestamp.
 // This way, the next request will need to wait longer.
+//
+// Wait is unbounded: under sustained overload Schedule keeps pushing the window further
+// into the future, so callers can end up sleeping for hours. Prefer WaitContext.
 func (r *Limiter) Wait() {
 	time.Sleep(r.Schedule())
+}
+
+// WaitContext reserves a slot and blocks until it is due, returning early if ctx is
+// cancelled. If the required wait exceeds max it returns ErrWaitTimeExceedsLimit without
+// blocking or reserving.
+//
+// Unlike Wait, this can never park a goroutine indefinitely.
+func (r *Limiter) WaitContext(ctx context.Context, max time.Duration) error {
+	waitTime, err := r.ScheduleWithLimit(max)
+	if err != nil {
+		return err
+	}
+
+	return sleepOrCancel(ctx, waitTime)
 }
 
 // The problem with this is that if used with go routines, concurrent requests to GetWaitTime() will return the same or close to the wait WaitTime
@@ -152,12 +219,15 @@ func (r *Limiter) TimeStampCount() int {
 	return len(r.timestamps)
 }
 
+// WaitWithLimit blocks until the limiter allows another request, unless that would mean
+// waiting longer than waitLimit, in which case it returns ErrWaitTimeExceedsLimit.
 func (r *Limiter) WaitWithLimit(waitLimit time.Duration) error {
-	if r.GetWaitTime() > waitLimit {
-		return errors.New("Wait time exceeds limit")
+	waitTime, err := r.ScheduleWithLimit(waitLimit)
+	if err != nil {
+		return err
 	}
 
-	r.Wait()
+	time.Sleep(waitTime)
 
 	return nil
 }
@@ -169,11 +239,14 @@ func (r *Limiter) SetMaxWaitTime(waitLimit time.Duration) {
 }
 
 func (r *Limiter) WaitWithInternalLimit() error {
-	if r.maxWaitTime != 0 && r.GetWaitTime() > r.maxWaitTime {
-		return errors.New("Wait time exceeds limit")
+	r.mu.Lock()
+	maxWaitTime := r.maxWaitTime
+	r.mu.Unlock()
+
+	if maxWaitTime == 0 {
+		r.Wait()
+		return nil
 	}
 
-	r.Wait()
-
-	return nil
+	return r.WaitWithLimit(maxWaitTime)
 }
